@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36518.9 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CimarFunctions", "CimarFunctions\CimarFunctions.csproj", "{AD28EA60-2D84-4F72-B229-724617FF7826}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AD28EA60-2D84-4F72-B229-724617FF7826}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AD28EA60-2D84-4F72-B229-724617FF7826}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AD28EA60-2D84-4F72-B229-724617FF7826}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AD28EA60-2D84-4F72-B229-724617FF7826}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {4B695B64-3AD4-4505-B1BF-FBB83A785C52}
+	EndGlobalSection
+EndGlobal
