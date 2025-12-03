@@ -38,6 +38,7 @@ public class LegendPaginatedFunction
         const string sql = @"
         SELECT
             L.Id,
+            L.Status,
             L.ClientName,
             L.ParkingAt,
             L.Matricule,
@@ -100,6 +101,7 @@ public class LegendPaginatedFunction
             finalList.Add(new
             {
                 id = r.Id,
+                status = r.Status,
                 clientName = r.ClientName,
                 parkingAt = r.ParkingAt,
                 chauffeurName = $"{r.ChauffeurNom} {r.ChauffeurPrenom}".Trim(),

@@ -82,5 +82,6 @@ namespace MyFunctions.Functions
         public DateTime? StartChargingAt { get; set; }
         public DateTime? FinishedChargingAt { get; set; }
         public int? SacNumber { get; set; }
+        public string? LigneName { get; set; }
     }
 }
