@@ -53,7 +53,9 @@ namespace MyFunctions.Functions
                 }
 
                 var response = req.CreateResponse(HttpStatusCode.OK);
+
                 await response.WriteAsJsonAsync(result);
+                
                 return response;
             }
             catch (Exception ex)
@@ -78,10 +80,17 @@ namespace MyFunctions.Functions
         public int? Quantite2 { get; set; }
 
         public string? Produit1Type { get; set; }
+        public int QualityCode { get; set; }
 
         public DateTime? StartChargingAt { get; set; }
         public DateTime? FinishedChargingAt { get; set; }
         public int? SacNumber { get; set; }
         public string? LigneName { get; set; }
+        public int NumberSacs_Charged { get; set; }
+        public string? SecondLigne {  get; set; }
+        public int? MinusBags { get; set; }
+        public int? PlusBags { get; set; }
+        public int? Rest {  get; set; }
+
     }
 }
