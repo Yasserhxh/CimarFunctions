@@ -76,8 +76,8 @@ namespace MyFunctions.Functions
         public string? ClientName {  get; set; }
         public string? Produit1 { get; set; }
         public string? Produit2 { get; set; }
-        public int? Quantite1 { get; set; }
-        public int? Quantite2 { get; set; }
+        public decimal? Quantite1 { get; set; }
+        public decimal? Quantite2 { get; set; }
 
         public string? Produit1Type { get; set; }
         public int QualityCode { get; set; }
