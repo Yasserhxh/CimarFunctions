@@ -28,6 +28,8 @@ public sealed class ExternalDeliverySyncService : IExternalDeliverySyncService
     {
         _logger.LogInformation("External delivery sync started at {UtcNow}", DateTime.UtcNow);
 
+        await _repository.EnsureLowCreditDeliveryRiskColumnAsync(cancellationToken);
+
         await using var syncLock = await _lockProvider.TryAcquireAsync(LockName, cancellationToken);
 
         if (!syncLock.Acquired)

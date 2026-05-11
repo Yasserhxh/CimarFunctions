@@ -15,6 +15,26 @@ public sealed class OrderLegendSyncRepository : IOrderLegendSyncRepository
             ?? throw new InvalidOperationException("ConnectionStrings:SqlServer is missing.");
     }
 
+    public async Task EnsureLowCreditDeliveryRiskColumnAsync(
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            IF COL_LENGTH('dbo.Ecare_Order_Legend', 'IsLowCreditDeliveryRisk') IS NULL
+            BEGIN
+                ALTER TABLE dbo.Ecare_Order_Legend
+                ADD IsLowCreditDeliveryRisk BIT NOT NULL
+                    CONSTRAINT DF_Ecare_Order_Legend_IsLowCreditDeliveryRisk DEFAULT (0);
+            END;
+            """;
+
+        await using var connection = new SqlConnection(_connectionString);
+
+        await connection.ExecuteAsync(
+            new CommandDefinition(
+                sql,
+                cancellationToken: cancellationToken));
+    }
+
     public async Task<IReadOnlyList<PendingOrderSyncModel>> GetPendingOrdersAsync(
         int take,
         CancellationToken cancellationToken = default)
