@@ -35,6 +35,74 @@ public sealed class OrderLegendSyncRepository : IOrderLegendSyncRepository
                 cancellationToken: cancellationToken));
     }
 
+    public async Task EnsureSecondPesageCancelColumnsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            IF COL_LENGTH('dbo.Ecare_Order_Legend', 'SecondPesageCanceledAt') IS NULL
+            BEGIN
+                ALTER TABLE dbo.Ecare_Order_Legend
+                ADD SecondPesageCanceledAt DATETIME NULL;
+            END;
+
+            IF COL_LENGTH('dbo.Ecare_Order_Legend', 'SecondPesageCanceledBy') IS NULL
+            BEGIN
+                ALTER TABLE dbo.Ecare_Order_Legend
+                ADD SecondPesageCanceledBy NVARCHAR(255) NULL;
+            END;
+            """;
+
+        await using var connection = new SqlConnection(_connectionString);
+
+        await connection.ExecuteAsync(
+            new CommandDefinition(
+                sql,
+                cancellationToken: cancellationToken));
+    }
+
+    public async Task EnsureSpecificLegendStepFixesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            UPDATE dbo.Ecare_Order_Legend
+            SET [Step] = 5
+            WHERE RTRIM(LTRIM(ISNULL([RFIDCard], ''))) = '1198'
+              AND [FinishedChargingAt] = '2026-05-13T16:06:00'
+              AND ISNULL([Step], 0) < 5;
+
+            UPDATE dbo.Ecare_Order_Legend
+            SET [Step] = 5
+            WHERE RTRIM(LTRIM(ISNULL([RFIDCard], ''))) = '2700'
+              AND [FinishedChargingAt] = '2026-04-30T12:40:00'
+              AND ISNULL([Step], 0) < 5;
+            """;
+
+        await using var connection = new SqlConnection(_connectionString);
+
+        await connection.ExecuteAsync(
+            new CommandDefinition(
+                sql,
+                cancellationToken: cancellationToken));
+    }
+
+    public async Task EnsureSpecificClientEquipmentHexFixesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            UPDATE dbo.Ecare_ClientEquipements
+            SET [RfidHex] = '8D24BFDA'
+            WHERE LTRIM(RTRIM(ISNULL([CarteSLV], ''))) = '2612'
+              AND ISNULL(LTRIM(RTRIM([RfidHex])), '') <> '8D24BFDA';
+            """;
+
+        await using var connection = new SqlConnection(_connectionString);
+
+        await connection.ExecuteAsync(
+            new CommandDefinition(
+                sql,
+                cancellationToken: cancellationToken));
+    }
+
     public async Task<IReadOnlyList<PendingOrderSyncModel>> GetPendingOrdersAsync(
         int take,
         CancellationToken cancellationToken = default)
@@ -70,16 +138,38 @@ public sealed class OrderLegendSyncRepository : IOrderLegendSyncRepository
         CancellationToken cancellationToken = default)
     {
         const string sql = """
+            DECLARE @Updated TABLE (Ligne NVARCHAR(150));
+
             UPDATE [dbo].[Ecare_Order_Legend]
             SET [BonDeLivraison] = @BonDeLivraison,
                 [Step] = 5,
                 [IsSynced] = 1,
                 [DocumentUpdatedAt] = SYSUTCDATETIME(),
                 [Status] = 'Completed'
+            OUTPUT inserted.[Ligne] INTO @Updated([Ligne])
             WHERE [Id] = @Id
               AND [Step] <= 5
               AND [BonDeLivraison] IS NULL
-              AND [IsSynced] = 0;
+              AND [IsSynced] = 0
+              AND [PabExitAt] IS NOT NULL
+              AND [DeuxiemePoid] IS NOT NULL;
+
+            IF @@ROWCOUNT > 0
+            BEGIN
+                UPDATE L
+                SET [RealtimeCapacity] =
+                    CASE
+                        WHEN ISNULL(L.[RealtimeCapacity], 0) < ISNULL(L.[Capacity], 0)
+                            THEN ISNULL(L.[RealtimeCapacity], 0) + 1
+                        ELSE ISNULL(L.[Capacity], 0)
+                    END
+                FROM [dbo].[Ecare_Ligne] L
+                WHERE L.[Nom] = (
+                        SELECT TOP (1) U.[Ligne]
+                        FROM @Updated U
+                        WHERE U.[Ligne] IS NOT NULL
+                    );
+            END;
             """;
 
         await using var connection = new SqlConnection(_connectionString);

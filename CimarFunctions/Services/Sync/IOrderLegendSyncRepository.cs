@@ -7,6 +7,15 @@ public interface IOrderLegendSyncRepository
     Task EnsureLowCreditDeliveryRiskColumnAsync(
         CancellationToken cancellationToken = default);
 
+    Task EnsureSecondPesageCancelColumnsAsync(
+        CancellationToken cancellationToken = default);
+
+    Task EnsureSpecificLegendStepFixesAsync(
+        CancellationToken cancellationToken = default);
+
+    Task EnsureSpecificClientEquipmentHexFixesAsync(
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<PendingOrderSyncModel>> GetPendingOrdersAsync(
         int take,
         CancellationToken cancellationToken = default);
