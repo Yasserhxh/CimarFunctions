@@ -10,6 +10,9 @@ public interface IOrderLegendSyncRepository
     Task EnsureSecondPesageCancelColumnsAsync(
         CancellationToken cancellationToken = default);
 
+    Task EnsureMesDocumentsCircuitColumnsAsync(
+        CancellationToken cancellationToken = default);
+
     Task EnsureSpecificLegendStepFixesAsync(
         CancellationToken cancellationToken = default);
 

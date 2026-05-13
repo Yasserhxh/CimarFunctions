@@ -60,6 +60,49 @@ public sealed class OrderLegendSyncRepository : IOrderLegendSyncRepository
                 cancellationToken: cancellationToken));
     }
 
+    public async Task EnsureMesDocumentsCircuitColumnsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            IF COL_LENGTH('dbo.Ecare_Order_Legend', 'SacNumber') IS NULL
+            BEGIN
+                ALTER TABLE dbo.Ecare_Order_Legend
+                ADD SacNumber INT NULL;
+            END;
+
+            IF COL_LENGTH('dbo.Ecare_Order_Legend', 'NumberSacs_Charged') IS NULL
+            BEGIN
+                ALTER TABLE dbo.Ecare_Order_Legend
+                ADD NumberSacs_Charged INT NULL;
+            END;
+
+            IF COL_LENGTH('dbo.Ecare_Order_Legend', 'Weight_Charged') IS NULL
+            BEGIN
+                ALTER TABLE dbo.Ecare_Order_Legend
+                ADD Weight_Charged DECIMAL(18, 3) NULL;
+            END;
+
+            IF COL_LENGTH('dbo.Ecare_Order_Legend', 'FirstPlaceAt') IS NULL
+            BEGIN
+                ALTER TABLE dbo.Ecare_Order_Legend
+                ADD FirstPlaceAt DATETIME NULL;
+            END;
+
+            IF COL_LENGTH('dbo.Ecare_Order_Legend', 'TimeElapsedInFirstPlace') IS NULL
+            BEGIN
+                ALTER TABLE dbo.Ecare_Order_Legend
+                ADD TimeElapsedInFirstPlace INT NULL;
+            END;
+            """;
+
+        await using var connection = new SqlConnection(_connectionString);
+
+        await connection.ExecuteAsync(
+            new CommandDefinition(
+                sql,
+                cancellationToken: cancellationToken));
+    }
+
     public async Task EnsureSpecificLegendStepFixesAsync(
         CancellationToken cancellationToken = default)
     {

@@ -30,6 +30,7 @@ public sealed class ExternalDeliverySyncService : IExternalDeliverySyncService
 
         await _repository.EnsureLowCreditDeliveryRiskColumnAsync(cancellationToken);
         await _repository.EnsureSecondPesageCancelColumnsAsync(cancellationToken);
+        await _repository.EnsureMesDocumentsCircuitColumnsAsync(cancellationToken);
         await _repository.EnsureSpecificLegendStepFixesAsync(cancellationToken);
         await _repository.EnsureSpecificClientEquipmentHexFixesAsync(cancellationToken);
 
