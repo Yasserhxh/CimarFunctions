@@ -146,28 +146,6 @@ public sealed class OrderLegendSyncRepository : IOrderLegendSyncRepository
                 cancellationToken: cancellationToken));
     }
 
-    public async Task SyncCancelledOrdersAsync(
-        CancellationToken cancellationToken = default)
-    {
-        const string sql = """
-            UPDATE dbo.Ecare_Order_Legend
-            SET
-                [IsSynced] = 1,
-                [DocumentUpdatedAt] = SYSUTCDATETIME(),
-                [Status] = 'Canceled'
-            WHERE ISNULL([AnnulationCommercial], 0) = 1
-              AND [BonDeLivraison] IS NULL
-              AND ISNULL([IsSynced], 0) = 0;
-            """;
-
-        await using var connection = new SqlConnection(_connectionString);
-
-        await connection.ExecuteAsync(
-            new CommandDefinition(
-                sql,
-                cancellationToken: cancellationToken));
-    }
-
     public async Task<IReadOnlyList<PendingOrderSyncModel>> GetPendingOrdersAsync(
         int take,
         CancellationToken cancellationToken = default)
@@ -181,7 +159,6 @@ public sealed class OrderLegendSyncRepository : IOrderLegendSyncRepository
             FROM [dbo].[Ecare_Order_Legend]
             WHERE [BonDeLivraison] IS NULL
               AND [IsSynced] = 0
-              AND ISNULL([AnnulationCommercial], 0) <> 1
               AND [CodeSapClient] IS NOT NULL
               AND [CodeSapCommande] IS NOT NULL
             ORDER BY [CreatedAt] ASC, [Id] ASC;
@@ -211,14 +188,22 @@ public sealed class OrderLegendSyncRepository : IOrderLegendSyncRepository
                 [Step] = 5,
                 [IsSynced] = 1,
                 [DocumentUpdatedAt] = SYSUTCDATETIME(),
-                [Status] = 'Completed'
+                [Status] = CASE
+                    WHEN ISNULL([AnnulationCommercial], 0) = 1 THEN 'Canceled'
+                    ELSE 'Completed'
+                END
             OUTPUT inserted.[Ligne] INTO @Updated([Ligne])
             WHERE [Id] = @Id
               AND [Step] <= 5
               AND [BonDeLivraison] IS NULL
               AND [IsSynced] = 0
-              AND [PabExitAt] IS NOT NULL
-              AND [DeuxiemePoid] IS NOT NULL;
+              AND (
+                    ISNULL([AnnulationCommercial], 0) = 1
+                    OR (
+                        [PabExitAt] IS NOT NULL
+                        AND [DeuxiemePoid] IS NOT NULL
+                    )
+                  );
 
             IF @@ROWCOUNT > 0
             BEGIN
@@ -234,6 +219,12 @@ public sealed class OrderLegendSyncRepository : IOrderLegendSyncRepository
                         SELECT TOP (1) U.[Ligne]
                         FROM @Updated U
                         WHERE U.[Ligne] IS NOT NULL
+                    );
+                  AND EXISTS (
+                        SELECT 1
+                        FROM [dbo].[Ecare_Order_Legend] O
+                        WHERE O.[Id] = @Id
+                          AND ISNULL(O.[AnnulationCommercial], 0) <> 1
                     );
             END;
             """;

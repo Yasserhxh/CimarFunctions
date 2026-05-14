@@ -33,7 +33,6 @@ public sealed class ExternalDeliverySyncService : IExternalDeliverySyncService
         await _repository.EnsureMesDocumentsCircuitColumnsAsync(cancellationToken);
         await _repository.EnsureSpecificLegendStepFixesAsync(cancellationToken);
         await _repository.EnsureSpecificClientEquipmentHexFixesAsync(cancellationToken);
-        await _repository.SyncCancelledOrdersAsync(cancellationToken);
 
         await using var syncLock = await _lockProvider.TryAcquireAsync(LockName, cancellationToken);
 
