@@ -13,6 +13,9 @@ public interface IOrderLegendSyncRepository
     Task EnsureMesDocumentsCircuitColumnsAsync(
         CancellationToken cancellationToken = default);
 
+    Task EnsureDocumentUpdatedAtColumnAsync(
+        CancellationToken cancellationToken = default);
+
     Task EnsureSpecificLegendStepFixesAsync(
         CancellationToken cancellationToken = default);
 
