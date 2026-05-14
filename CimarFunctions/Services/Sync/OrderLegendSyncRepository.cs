@@ -146,6 +146,28 @@ public sealed class OrderLegendSyncRepository : IOrderLegendSyncRepository
                 cancellationToken: cancellationToken));
     }
 
+    public async Task SyncCancelledOrdersAsync(
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            UPDATE dbo.Ecare_Order_Legend
+            SET
+                [IsSynced] = 1,
+                [DocumentUpdatedAt] = SYSUTCDATETIME(),
+                [Status] = 'Canceled'
+            WHERE ISNULL([AnnulationCommercial], 0) = 1
+              AND [BonDeLivraison] IS NULL
+              AND ISNULL([IsSynced], 0) = 0;
+            """;
+
+        await using var connection = new SqlConnection(_connectionString);
+
+        await connection.ExecuteAsync(
+            new CommandDefinition(
+                sql,
+                cancellationToken: cancellationToken));
+    }
+
     public async Task<IReadOnlyList<PendingOrderSyncModel>> GetPendingOrdersAsync(
         int take,
         CancellationToken cancellationToken = default)
@@ -159,6 +181,7 @@ public sealed class OrderLegendSyncRepository : IOrderLegendSyncRepository
             FROM [dbo].[Ecare_Order_Legend]
             WHERE [BonDeLivraison] IS NULL
               AND [IsSynced] = 0
+              AND ISNULL([AnnulationCommercial], 0) <> 1
               AND [CodeSapClient] IS NOT NULL
               AND [CodeSapCommande] IS NOT NULL
             ORDER BY [CreatedAt] ASC, [Id] ASC;
