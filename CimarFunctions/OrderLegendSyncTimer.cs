@@ -20,7 +20,7 @@ public sealed class OrderLegendSyncTimer
 
     [Function(nameof(OrderLegendSyncTimer))]
     public async Task Run(
-        [TimerTrigger("0 */1 * * * *")] TimerInfo timer,
+        [TimerTrigger("0 */15 * * * *")] TimerInfo timer,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation(
