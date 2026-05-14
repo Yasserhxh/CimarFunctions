@@ -71,7 +71,7 @@ public sealed class ExternalDeliverySyncService : IExternalDeliverySyncService
                 .DefaultIfEmpty(DateTime.UtcNow.Date.AddMonths(-3))
                 .Min();
 
-            var endDate = DateTime.UtcNow.Date;
+            var endDate = DateTime.UtcNow.Date.AddDays(1);
 
             IReadOnlyList<Models.ExternalLivraisonModel> apiResult;
 
