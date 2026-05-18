@@ -24,8 +24,8 @@ public sealed class OrderLegendSyncTimer
         CancellationToken cancellationToken)
     {
         _logger.LogInformation(
-            "Order legend sync timer fired at {UtcNow}. Next={NextRun}",
-            DateTime.UtcNow,
+            "Order legend sync timer fired at {Now}. Next={NextRun}",
+            DateTime.Now,
             timer.ScheduleStatus?.Next);
 
         try

@@ -165,6 +165,104 @@ public sealed class OrderLegendSyncRepository : IOrderLegendSyncRepository
                 cancellationToken: cancellationToken));
     }
 
+    public async Task EnsureLamaalemProductsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            DECLARE @ReferenceImageUrl NVARCHAR(MAX);
+            DECLARE @ReferenceDetails NVARCHAR(MAX);
+
+            SELECT TOP (1)
+                @ReferenceImageUrl = ImageUrl,
+                @ReferenceDetails = Details
+            FROM dbo.EcareCiments
+            WHERE (
+                    Name LIKE '%CPJ35%SAC%50%'
+                 OR Name LIKE '%CPJ 35%SAC%50%'
+                 OR Description LIKE '%CPJ35%SAC%50%'
+                 OR Description LIKE '%CPJ 35%SAC%50%'
+            )
+            ORDER BY
+                CASE WHEN Type = 'SAC' THEN 0 ELSE 1 END,
+                Id;
+
+            IF NOT EXISTS (SELECT 1 FROM dbo.EcareCiments WHERE CodeSAP = '2008758')
+            BEGIN
+                INSERT INTO dbo.EcareCiments
+                (
+                    Name,
+                    ImageUrl,
+                    Details,
+                    Type,
+                    Description,
+                    CodeSAP
+                )
+                VALUES
+                (
+                    'Lamaalem 35 Sac 50kg',
+                    @ReferenceImageUrl,
+                    @ReferenceDetails,
+                    'SAC',
+                    'Ciment CM3 X sac 50 Kg',
+                    '2008758'
+                );
+            END;
+
+            IF NOT EXISTS (SELECT 1 FROM dbo.EcareCiments WHERE CodeSAP = '2008759')
+            BEGIN
+                INSERT INTO dbo.EcareCiments
+                (
+                    Name,
+                    ImageUrl,
+                    Details,
+                    Type,
+                    Description,
+                    CodeSAP
+                )
+                VALUES
+                (
+                    'Lamaalem 35 Sac 50kg PAL',
+                    @ReferenceImageUrl,
+                    @ReferenceDetails,
+                    'PAL',
+                    'Ciment CM3 X sac 50 Kg PAL',
+                    '2008759'
+                );
+            END;
+
+            IF COL_LENGTH('dbo.EcareCiments', 'PoidKg') IS NOT NULL
+            BEGIN
+                UPDATE dbo.EcareCiments
+                SET PoidKg = 50
+                WHERE CodeSAP IN ('2008758', '2008759')
+                  AND ISNULL(PoidKg, 0) <> 50;
+            END;
+
+            IF COL_LENGTH('dbo.EcareCiments', 'TarifParTonne') IS NOT NULL
+            BEGIN
+                UPDATE dbo.EcareCiments
+                SET TarifParTonne = CASE CodeSAP
+                    WHEN '2008758' THEN 1202
+                    WHEN '2008759' THEN 1205
+                    ELSE TarifParTonne
+                END
+                WHERE CodeSAP IN ('2008758', '2008759')
+                  AND (
+                        TarifParTonne IS NULL
+                     OR (CodeSAP = '2008758' AND TarifParTonne <> 1202)
+                     OR (CodeSAP = '2008759' AND TarifParTonne <> 1205)
+                  );
+            END;
+            """;
+
+        await using var connection = new SqlConnection(_connectionString);
+
+        await connection.ExecuteAsync(
+            new CommandDefinition(
+                sql,
+                cancellationToken: cancellationToken));
+    }
+
     public async Task<IReadOnlyList<PendingOrderSyncModel>> GetPendingOrdersAsync(
         int take,
         CancellationToken cancellationToken = default)
@@ -206,7 +304,7 @@ public sealed class OrderLegendSyncRepository : IOrderLegendSyncRepository
             SET [BonDeLivraison] = @BonDeLivraison,
                 [Step] = 5,
                 [IsSynced] = 1,
-                [DocumentUpdatedAt] = SYSUTCDATETIME(),
+                [DocumentUpdatedAt] = CONVERT(datetime, SYSDATETIMEOFFSET() AT TIME ZONE 'Morocco Standard Time'),
                 [Status] = CASE
                     WHEN ISNULL([AnnulationCommercial], 0) = 1 THEN 'Canceled'
                     ELSE 'Completed'

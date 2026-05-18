@@ -26,9 +26,10 @@ public sealed class ExternalDeliverySyncService : IExternalDeliverySyncService
 
     public async Task SyncAsync(CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("External delivery sync started at {UtcNow}", DateTime.UtcNow);
+        _logger.LogInformation("External delivery sync started at {Now}", DateTime.Now);
 
         await _repository.EnsureDocumentUpdatedAtColumnAsync(cancellationToken);
+        await _repository.EnsureLamaalemProductsAsync(cancellationToken);
 
         await using var syncLock = await _lockProvider.TryAcquireAsync(LockName, cancellationToken);
 
@@ -44,7 +45,7 @@ public sealed class ExternalDeliverySyncService : IExternalDeliverySyncService
 
         if (pendingOrders.Count == 0)
         {
-            _logger.LogInformation("External delivery sync finished at {UtcNow}", DateTime.UtcNow);
+            _logger.LogInformation("External delivery sync finished at {Now}", DateTime.Now);
             return;
         }
 
@@ -64,10 +65,10 @@ public sealed class ExternalDeliverySyncService : IExternalDeliverySyncService
             var startDate = orders
                 .Where(x => x.CreatedAt.HasValue)
                 .Select(x => x.CreatedAt!.Value.Date)
-                .DefaultIfEmpty(DateTime.UtcNow.Date.AddMonths(-3))
+                .DefaultIfEmpty(DateTime.Now.Date.AddMonths(-3))
                 .Min();
 
-            var endDate = DateTime.UtcNow.Date.AddDays(1);
+            var endDate = DateTime.Now.Date.AddDays(1);
 
             IReadOnlyList<Models.ExternalLivraisonModel> apiResult;
 
@@ -124,6 +125,6 @@ public sealed class ExternalDeliverySyncService : IExternalDeliverySyncService
             }
         }
 
-        _logger.LogInformation("External delivery sync finished at {UtcNow}", DateTime.UtcNow);
+        _logger.LogInformation("External delivery sync finished at {Now}", DateTime.Now);
     }
 }

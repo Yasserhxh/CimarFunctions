@@ -22,6 +22,9 @@ public interface IOrderLegendSyncRepository
     Task EnsureSpecificClientEquipmentHexFixesAsync(
         CancellationToken cancellationToken = default);
 
+    Task EnsureLamaalemProductsAsync(
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<PendingOrderSyncModel>> GetPendingOrdersAsync(
         int take,
         CancellationToken cancellationToken = default);
