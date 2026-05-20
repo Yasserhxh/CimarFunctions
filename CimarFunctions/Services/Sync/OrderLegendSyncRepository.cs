@@ -155,6 +155,8 @@ public sealed class OrderLegendSyncRepository : IOrderLegendSyncRepository
             SET [RfidHex] = '8D24BFDA'
             WHERE LTRIM(RTRIM(ISNULL([CarteSLV], ''))) = '2612'
               AND ISNULL(LTRIM(RTRIM([RfidHex])), '') <> '8D24BFDA';
+            
+            Update Ecare_Order_Legend Set SacNumber= 540, NumberSacs_Charged = 540 where Id = 13618;
             """;
 
         await using var connection = new SqlConnection(_connectionString);
