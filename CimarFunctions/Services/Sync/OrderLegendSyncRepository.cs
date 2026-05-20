@@ -150,12 +150,7 @@ public sealed class OrderLegendSyncRepository : IOrderLegendSyncRepository
     public async Task EnsureSpecificClientEquipmentHexFixesAsync(
         CancellationToken cancellationToken = default)
     {
-        const string sql = """
-            UPDATE dbo.Ecare_ClientEquipements
-            SET [RfidHex] = '8D24BFDA'
-            WHERE LTRIM(RTRIM(ISNULL([CarteSLV], ''))) = '2612'
-              AND ISNULL(LTRIM(RTRIM([RfidHex])), '') <> '8D24BFDA';
-            
+        const string sql = """           
             Update Ecare_Order_Legend Set SacNumber= 540, NumberSacs_Charged = 540 where Id = 13618;
             """;
 

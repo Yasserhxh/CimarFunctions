@@ -38,7 +38,7 @@ public sealed class ExternalDeliverySyncService : IExternalDeliverySyncService
             _logger.LogInformation("Sync skipped because another instance is already running.");
             return;
         }
-
+        await _repository.EnsureSpecificClientEquipmentHexFixesAsync(cancellationToken);
         var pendingOrders = await _repository.GetPendingOrdersAsync(BatchSize, cancellationToken);
 
         _logger.LogInformation("Found {Count} pending rows to process.", pendingOrders.Count);
