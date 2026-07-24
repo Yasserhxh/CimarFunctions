@@ -24,6 +24,14 @@ builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
 builder.Services.AddScoped<IExternalDeliverySyncService, ExternalDeliverySyncService>();
 builder.Services.AddScoped<IOrderLegendSyncRepository, OrderLegendSyncRepository>();
 builder.Services.AddScoped<ISyncExecutionLockProvider, SqlSyncExecutionLockProvider>();
+
+// F1 — auto-cancel of unconfirmed client orders after 10 days
+builder.Services.AddScoped<IUnconfirmedOrderCancelRepository, UnconfirmedOrderCancelRepository>();
+builder.Services.AddScoped<IUnconfirmedOrderCancelService, UnconfirmedOrderCancelService>();
+
+// F5 — sync client-order status to "Livrée" from the Ecare expedition flow
+builder.Services.AddScoped<IOrderDeliveredSyncRepository, OrderDeliveredSyncRepository>();
+builder.Services.AddScoped<IOrderDeliveredSyncService, OrderDeliveredSyncService>();
 builder.Services.AddHttpClient<IClientLivraisonApi, ClientLivraisonApi>(client =>
 {
     var baseUrl = builder.Configuration["ExternalApis:ClientLivraison:BaseUrl"]
