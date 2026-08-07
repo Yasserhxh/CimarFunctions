@@ -52,6 +52,28 @@ namespace MyFunctions.Functions
                     return notFound;
                 }
 
+                // sp_GetLegendDetailsById n'est pas versionnée dans ce repo : ces champs
+                // sont lus directement pour ne pas dépendre de la proc. PlombNumber est
+                // casté en NVARCHAR car son type diffère selon les mappings existants.
+                var extra = await conn.QueryFirstOrDefaultAsync<LegendExtraFieldsRow>(
+                    @"SELECT LoadingPointTare,
+                             DeuxiemePoid,
+                             Weight_Charged,
+                             Plombs,
+                             CAST(PlombNumber AS NVARCHAR(50)) AS PlombNumber
+                      FROM dbo.Ecare_Order_Legend
+                      WHERE Id = @Id",
+                    new { Id = id });
+
+                if (extra != null)
+                {
+                    result.LoadingPointTare = extra.LoadingPointTare;
+                    result.DeuxiemePoid = extra.DeuxiemePoid;
+                    result.Weight_Charged = extra.Weight_Charged;
+                    result.Plombs = extra.Plombs;
+                    result.PlombNumber = extra.PlombNumber;
+                }
+
                 var response = req.CreateResponse(HttpStatusCode.OK);
 
                 await response.WriteAsJsonAsync(result);
@@ -92,5 +114,23 @@ namespace MyFunctions.Functions
         public int? PlusBags { get; set; }
         public int? Rest {  get; set; }
 
+        // Tare relevée par la bascule du point de chargement VRAC (comparaison PremierePoid)
+        public int? LoadingPointTare { get; set; }
+
+        // Champs DB attendus par l'AppMobile après fin de chargement
+        public int? DeuxiemePoid { get; set; }
+        public int? Weight_Charged { get; set; }
+        public string? Plombs { get; set; }
+        public string? PlombNumber { get; set; }
+    }
+
+    // Colonnes lues directement dans Ecare_Order_Legend (hors sp_GetLegendDetailsById)
+    public sealed class LegendExtraFieldsRow
+    {
+        public int? LoadingPointTare { get; set; }
+        public int? DeuxiemePoid { get; set; }
+        public int? Weight_Charged { get; set; }
+        public string? Plombs { get; set; }
+        public string? PlombNumber { get; set; }
     }
 }
