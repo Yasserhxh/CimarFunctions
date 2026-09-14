@@ -3,7 +3,7 @@ using System.Text;
 using System.Text.Json;
 
 namespace CimarFunctions.Services.Sync;
-
+//to deploy
 public sealed class ClientLivraisonApi : IClientLivraisonApi
 {
     private readonly HttpClient _httpClient;
