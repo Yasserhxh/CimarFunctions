@@ -1,4 +1,4 @@
-﻿name: Diag - fetch Kudu startup logs
+name: Diag - fetch Kudu startup logs
 
 on:
   push:
@@ -10,7 +10,7 @@ jobs:
   fetch-logs:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch event log via Kudu
+      - name: Inspect app settings and test storage connectivity
         shell: pwsh
         env:
           PUBLISH_PROFILE: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_8C0C590936F547DB86BAFE1C7C926A6A }}
@@ -23,19 +23,41 @@ jobs:
           $h = @{ Authorization = "Basic $b64" }
           $scm = "https://func-emea-we-dssprod-mycimar-portal-001.scm.azurewebsites.net"
 
-          Write-Host "=== LogFiles directory listing ==="
-          $files = Invoke-RestMethod -Uri "$scm/api/vfs/LogFiles/" -Headers $h
-          $files | ForEach-Object { Write-Host ("{0}  {1}  {2}" -f $_.mtime, $_.size, $_.name) }
+          Write-Host "=== Site processes (is w3wp alive?) ==="
+          try {
+            $procs = Invoke-RestMethod -Uri "$scm/api/processes" -Headers $h
+            $procs | ForEach-Object { Write-Host ("{0}  {1}" -f $_.id, $_.name) }
+          } catch { Write-Host "processes API failed: $($_.Exception.Message)" }
 
           Write-Host ""
-          Write-Host "=== Last 8 events from eventlog.xml ==="
-          $raw = Invoke-WebRequest -Uri "$scm/api/vfs/LogFiles/eventlog.xml" -Headers $h -UseBasicParsing
-          $ev = [xml]$raw.Content
-          $events = @($ev.Events.Event) | Select-Object -Last 8
-          foreach ($e in $events) {
-            Write-Host "---- $($e.System.TimeCreated.SystemTime) | Level $($e.System.Level) | $($e.System.Provider.Name) | EventID $($e.System.EventID.'#text')$($e.System.EventID)"
-            $data = ($e.EventData.Data -join "`n")
-            if ($data.Length -gt 4000) { $data = $data.Substring(0, 4000) + " ...[truncated]" }
-            Write-Host $data
-            Write-Host ""
+          Write-Host "=== App settings (names only + selected non-secret values) ==="
+          $settings = Invoke-RestMethod -Uri "$scm/api/settings" -Headers $h
+          $names = $settings.PSObject.Properties.Name | Sort-Object
+          Write-Host ($names -join ", ")
+          foreach ($n in @('FUNCTIONS_EXTENSION_VERSION','FUNCTIONS_WORKER_RUNTIME','WEBSITE_RUN_FROM_PACKAGE','WEBSITE_CONTENTSHARE','netFrameworkVersion','FUNCTIONS_INPROC_NET8_ENABLED')) {
+            if ($names -contains $n) { Write-Host "$n = $($settings.$n)" }
+          }
+
+          Write-Host ""
+          Write-Host "=== AzureWebJobsStorage connectivity test (no secrets printed) ==="
+          $conn = $settings.AzureWebJobsStorage
+          if (-not $conn) {
+            Write-Host "RESULT: AzureWebJobsStorage IS MISSING from app settings"
+          } else {
+            $acct = if ($conn -match 'AccountName=([^;]+)') { $matches[1] } else { '(unparsed)' }
+            Write-Host "AzureWebJobsStorage present, AccountName=$acct, length=$($conn.Length)"
+            $out = az storage container list --connection-string "$conn" --only-show-errors --output none 2>&1
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "RESULT: STORAGE OK - key auth works, account reachable"
+            } else {
+              Write-Host "RESULT: STORAGE FAIL (exit $LASTEXITCODE)"
+              $out | ForEach-Object { $_.ToString() } | Select-Object -First 15 | Write-Host
+            }
+            # also check content share setting used by the host on consumption/premium
+            $cconn = $settings.WEBSITE_CONTENTAZUREFILECONNECTIONSTRING
+            if ($cconn) {
+              $out2 = az storage share list --connection-string "$cconn" --only-show-errors --output none 2>&1
+              if ($LASTEXITCODE -eq 0) { Write-Host "RESULT: CONTENT FILE SHARE STORAGE OK" }
+              else { Write-Host "RESULT: CONTENT FILE SHARE STORAGE FAIL (exit $LASTEXITCODE)"; $out2 | ForEach-Object { $_.ToString() } | Select-Object -First 15 | Write-Host }
+            } else { Write-Host "No WEBSITE_CONTENTAZUREFILECONNECTIONSTRING setting" }
           }
