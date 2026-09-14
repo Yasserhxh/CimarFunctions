@@ -1,0 +1,38 @@
+name: Diag - fetch Kudu startup logs
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fetch-logs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch event log via Kudu
+        shell: pwsh
+        env:
+          PUBLISH_PROFILE: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_8C0C590936F547DB86BAFE1C7C926A6A }}
+        run: |
+          $xml = [xml]$env:PUBLISH_PROFILE
+          $p = $xml.publishData.publishProfile | Where-Object { $_.publishMethod -eq 'ZipDeploy' } | Select-Object -First 1
+          if (-not $p) { $p = $xml.publishData.publishProfile | Select-Object -First 1 }
+          $pair = "$($p.userName):$($p.userPWD)"
+          $b64 = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($pair))
+          $h = @{ Authorization = "Basic $b64" }
+          $scm = "https://func-emea-we-dssprod-mycimar-portal-001.scm.azurewebsites.net"
+
+          Write-Host "=== LogFiles directory listing ==="
+          $files = Invoke-RestMethod -Uri "$scm/api/vfs/LogFiles/" -Headers $h
+          $files | ForEach-Object { Write-Host ("{0}  {1}  {2}" -f $_.mtime, $_.size, $_.name) }
+
+          Write-Host ""
+          Write-Host "=== Last 8 events from eventlog.xml ==="
+          $raw = Invoke-WebRequest -Uri "$scm/api/vfs/LogFiles/eventlog.xml" -Headers $h -UseBasicParsing
+          $ev = [xml]$raw.Content
+          $events = @($ev.Events.Event) | Select-Object -Last 8
+          foreach ($e in $events) {
+            Write-Host "---- $($e.System.TimeCreated.SystemTime) | Level $($e.System.Level) | $($e.System.Provider.Name) | EventID $($e.System.EventID.'#text')$($e.System.EventID)"
+            $data = ($e.EventData.Data -join "`n")
+            if ($data.Length -gt 4000) { $data = $data.Substring(0, 4000) + " ...[truncated]" }
+            Write-Host $data
+            Write-Host ""
+          }
