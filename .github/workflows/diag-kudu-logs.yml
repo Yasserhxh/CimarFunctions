@@ -1,6 +1,9 @@
-name: Diag - fetch Kudu startup logs
+﻿name: Diag - fetch Kudu startup logs
 
 on:
+  push:
+    branches:
+      - diag/kudu-logs
   workflow_dispatch:
 
 jobs:
