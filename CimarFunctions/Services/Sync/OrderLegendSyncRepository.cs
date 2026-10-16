@@ -261,21 +261,32 @@ public sealed class OrderLegendSyncRepository : IOrderLegendSyncRepository
     }
 
     public async Task<IReadOnlyList<PendingOrderSyncModel>> GetPendingOrdersAsync(
+        DateTime since,
         int take,
         CancellationToken cancellationToken = default)
     {
+        // Newest first within the window (PendingLegendSyncPolicy): rows that never get a BL
+        // must not fill the batch and starve recent deliveries.
         const string sql = """
             SELECT TOP (@Take)
-                  [Id]
-                , [CodeSapClient]
-                , [CodeSapCommande]
-                , [CreatedAt]
-            FROM [dbo].[Ecare_Order_Legend]
-            WHERE [BonDeLivraison] IS NULL
-              AND [IsSynced] = 0
-              AND [CodeSapClient] IS NOT NULL
-              AND [CodeSapCommande] IS NOT NULL
-            ORDER BY [CreatedAt] ASC, [Id] ASC;
+                  P.[Id]
+                , P.[CodeSapClient]
+                , P.[CodeSapCommande]
+                , P.[ReferenceDate]
+            FROM (
+                SELECT
+                      [Id]
+                    , [CodeSapClient]
+                    , [CodeSapCommande]
+                    , COALESCE([CreatedAt], [ParkingAt], [AddedToQueueAt], [DateAffectation]) AS [ReferenceDate]
+                FROM [dbo].[Ecare_Order_Legend]
+                WHERE [BonDeLivraison] IS NULL
+                  AND [IsSynced] = 0
+                  AND [CodeSapClient] IS NOT NULL
+                  AND [CodeSapCommande] IS NOT NULL
+            ) AS P
+            WHERE P.[ReferenceDate] >= @Since
+            ORDER BY P.[ReferenceDate] DESC, P.[Id] DESC;
             """;
 
         await using var connection = new SqlConnection(_connectionString);
@@ -283,7 +294,7 @@ public sealed class OrderLegendSyncRepository : IOrderLegendSyncRepository
         var rows = await connection.QueryAsync<PendingOrderSyncModel>(
             new CommandDefinition(
                 sql,
-                new { Take = take },
+                new { Since = since, Take = take },
                 cancellationToken: cancellationToken));
 
         return rows.ToList();

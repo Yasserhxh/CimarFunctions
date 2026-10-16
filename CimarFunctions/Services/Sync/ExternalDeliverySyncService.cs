@@ -39,9 +39,19 @@ public sealed class ExternalDeliverySyncService : IExternalDeliverySyncService
             return;
         }
         await _repository.EnsureSpecificClientEquipmentHexFixesAsync(cancellationToken);
-        var pendingOrders = await _repository.GetPendingOrdersAsync(BatchSize, cancellationToken);
+        var now = DateTime.Now;
+        var lookbackDays = PendingLegendSyncPolicy.DefaultLookbackDays;
+        var since = PendingLegendSyncPolicy.SinceFor(now, lookbackDays);
 
-        _logger.LogInformation("Found {Count} pending rows to process.", pendingOrders.Count);
+        var candidates = await _repository.GetPendingOrdersAsync(since, BatchSize, cancellationToken);
+
+        // Authoritative window/ordering check (defense in depth over the SQL).
+        var pendingOrders = PendingLegendSyncPolicy.SelectBatch(
+            candidates, x => x.ReferenceDate, now, lookbackDays, BatchSize);
+
+        _logger.LogInformation(
+            "Found {Count} pending rows to process (since {Since}, {Days} days).",
+            pendingOrders.Count, since, lookbackDays);
 
         if (pendingOrders.Count == 0)
         {
@@ -63,8 +73,8 @@ public sealed class ExternalDeliverySyncService : IExternalDeliverySyncService
             _logger.LogInformation("Processing client {ClientCode} with {Count} orders.", clientCode, orders.Count);
 
             var startDate = orders
-                .Where(x => x.CreatedAt.HasValue)
-                .Select(x => x.CreatedAt!.Value.Date)
+                .Where(x => x.ReferenceDate.HasValue)
+                .Select(x => x.ReferenceDate!.Value.Date)
                 .DefaultIfEmpty(DateTime.Now.Date.AddMonths(-3))
                 .Min();
 

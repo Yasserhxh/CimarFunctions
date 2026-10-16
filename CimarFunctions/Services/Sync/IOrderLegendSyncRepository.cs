@@ -26,6 +26,7 @@ public interface IOrderLegendSyncRepository
         CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<PendingOrderSyncModel>> GetPendingOrdersAsync(
+        DateTime since,
         int take,
         CancellationToken cancellationToken = default);
 
