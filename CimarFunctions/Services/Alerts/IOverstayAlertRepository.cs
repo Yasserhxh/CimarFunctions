@@ -11,6 +11,7 @@ public interface IOverstayAlertRepository
     Task<IReadOnlyList<OverstayRow>> GetOverstayCandidatesAsync(
         DateTime nowLocal,
         int minThreshold,
+        DateTime? ignoreBefore,
         CancellationToken cancellationToken = default);
 
     /// <summary>

@@ -19,9 +19,15 @@ public static class OverstayAlertRules
         int? deuxiemePoid,
         DateTime nowLocal,
         IEnumerable<int> thresholds,
-        ISet<int> alreadySent)
+        ISet<int> alreadySent,
+        DateTime? ignoreBefore = null)
     {
         if (pabEntryAt is null || deuxiemePoid is not null)
+            return Array.Empty<int>();
+
+        // Plancher anti-fantômes : les enregistrements entrés avant cette date (2e pesée
+        // faite manuellement / hors système, legend jamais clôturée) ne sont jamais alertés.
+        if (ignoreBefore is not null && pabEntryAt.Value < ignoreBefore.Value)
             return Array.Empty<int>();
 
         var elapsed = ElapsedMinutes(pabEntryAt.Value, nowLocal);

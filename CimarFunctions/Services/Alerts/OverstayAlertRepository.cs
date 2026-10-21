@@ -18,6 +18,7 @@ public sealed class OverstayAlertRepository : IOverstayAlertRepository
     public async Task<IReadOnlyList<OverstayRow>> GetOverstayCandidatesAsync(
         DateTime nowLocal,
         int minThreshold,
+        DateTime? ignoreBefore,
         CancellationToken cancellationToken = default)
     {
         // Camions entrés (1ère pesée), pas encore sortis (2ème pesée), non annulés, au-delà
@@ -33,7 +34,8 @@ public sealed class OverstayAlertRepository : IOverstayAlertRepository
               AND l.DeuxiemePoid IS NULL
               AND (l.AnnulationCommercial IS NULL OR l.AnnulationCommercial = 0)
               AND (l.Status IS NULL OR l.Status NOT IN ('Completed', 'Canceled'))
-              AND DATEDIFF(MINUTE, l.PabEntryAt, @NowLocal) > @MinThreshold;
+              AND DATEDIFF(MINUTE, l.PabEntryAt, @NowLocal) > @MinThreshold
+              AND (@IgnoreBefore IS NULL OR l.PabEntryAt >= @IgnoreBefore);
             """;
 
         await using var connection = new SqlConnection(_connectionString);
@@ -41,7 +43,7 @@ public sealed class OverstayAlertRepository : IOverstayAlertRepository
         var rows = await connection.QueryAsync<OverstayRow>(
             new CommandDefinition(
                 sql,
-                new { NowLocal = nowLocal, MinThreshold = minThreshold },
+                new { NowLocal = nowLocal, MinThreshold = minThreshold, IgnoreBefore = ignoreBefore },
                 cancellationToken: cancellationToken));
 
         return rows.ToList();

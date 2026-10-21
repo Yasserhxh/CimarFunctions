@@ -53,6 +53,26 @@ public class OverstayAlertRulesTests
     public void ElapsedMinutes_arrondi_a_la_minute()
         => Assert.Equal(90, OverstayAlertRules.ElapsedMinutes(Now.AddMinutes(-90), Now));
 
+    // Garde-fou « fantômes » : un camion entré avant le plancher (2e pesée manuelle / hors
+    // système, enregistrement jamais clôturé) ne doit JAMAIS déclencher d'alerte, même très
+    // au-delà des paliers. Cas réel : legend 28202 entré le 02/10, alerte à 27438 min.
+    private static readonly DateTime Floor = new(2026, 9, 23, 0, 0, 0);
+
+    [Fact]
+    public void Entre_avant_le_plancher_aucun_palier_meme_tres_en_retard()
+        => Assert.Empty(OverstayAlertRules.StagesToSend(
+            Floor.AddMinutes(-5000), null, Now, Paliers, Sent(), ignoreBefore: Floor));
+
+    [Fact]
+    public void Entre_apres_le_plancher_declenche_normalement()
+        => Assert.Equal(new[] { 75, 90 }, OverstayAlertRules.StagesToSend(
+            Now.AddMinutes(-95), null, Now, Paliers, Sent(), ignoreBefore: Floor).ToArray());
+
+    [Fact]
+    public void Sans_plancher_comportement_inchange()
+        => Assert.Equal(new[] { 75 }, OverstayAlertRules.StagesToSend(
+            Now.AddMinutes(-80), null, Now, Paliers, Sent(), ignoreBefore: null).ToArray());
+
     [Fact]
     public void SplitRecipients_premier_to_reste_cc_dedoublonne()
     {

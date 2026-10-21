@@ -60,13 +60,15 @@ public sealed class OverstayAlertService : IOverstayAlertService
         // alors que PabEntryAt est horodaté par Azure SQL (déjà en GMT).
         var nowLocal = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
 
-        var rows = await _repository.GetOverstayCandidatesAsync(nowLocal, minThreshold, cancellationToken);
+        var ignoreBefore = _opt.IgnoreEntriesBeforeLocal;
+
+        var rows = await _repository.GetOverstayCandidatesAsync(nowLocal, minThreshold, ignoreBefore, cancellationToken);
         if (rows.Count == 0) return;
 
         foreach (var r in rows)
         {
             var alreadySent = ParseStages(r.SentStagesCsv);
-            var due = OverstayAlertRules.StagesToSend(r.PabEntryAt, null, nowLocal, thresholds, alreadySent);
+            var due = OverstayAlertRules.StagesToSend(r.PabEntryAt, null, nowLocal, thresholds, alreadySent, ignoreBefore);
             if (due.Count == 0) continue;
 
             var elapsed = OverstayAlertRules.ElapsedMinutes(r.PabEntryAt, nowLocal);
