@@ -21,6 +21,7 @@
     <Compile Include="..\CimarFunctions\Services\Sync\UnconfirmedOrderCancelPolicy.cs" Link="Policies\UnconfirmedOrderCancelPolicy.cs" />
     <Compile Include="..\CimarFunctions\Services\Sync\OrderDeliveredSyncPolicy.cs" Link="Policies\OrderDeliveredSyncPolicy.cs" />
     <Compile Include="..\CimarFunctions\Services\Sync\PendingLegendSyncPolicy.cs" Link="Policies\PendingLegendSyncPolicy.cs" />
+    <Compile Include="..\CimarFunctions\Services\Alerts\OverstayAlertRules.cs" Link="Policies\OverstayAlertRules.cs" />
   </ItemGroup>
 
 </Project>

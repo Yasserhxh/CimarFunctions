@@ -1,8 +1,11 @@
+using CimarFunctions.Services.Alerts;
+using CimarFunctions.Services.Email;
 using CimarFunctions.Services.Sync;
 using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Identity.Client;
 
 var builder = FunctionsApplication.CreateBuilder(args);
 
@@ -40,6 +43,34 @@ builder.Services.AddHttpClient<IClientLivraisonApi, ClientLivraisonApi>(client =
     client.BaseAddress = new Uri(baseUrl);
     client.Timeout = TimeSpan.FromSeconds(60);
 });
+
+// Alerte « camion en dépassement dans l'usine (entre 1ère et 2ème pesée) ».
+// Enregistrée seulement si AzureAdMail:ClientId est présent : sans creds, on ne
+// branche ni le client MSAL ni le worker (l'app démarre normalement, pas de crash).
+var overstayEnabled = builder.Configuration.GetValue("OverstayAlert:Enabled", true);
+var mailClientId = builder.Configuration["AzureAdMail:ClientId"];
+if (overstayEnabled && !string.IsNullOrWhiteSpace(mailClientId))
+{
+    builder.Services.Configure<OverstayAlertOptions>(
+        builder.Configuration.GetSection("OverstayAlert"));
+
+    builder.Services.AddSingleton<IConfidentialClientApplication>(_ =>
+        ConfidentialClientApplicationBuilder
+            .Create(mailClientId)
+            .WithClientSecret(builder.Configuration["AzureAdMail:ClientSecret"])
+            .WithAuthority(new Uri($"https://login.microsoftonline.com/{builder.Configuration["AzureAdMail:TenantId"]}"))
+            .Build());
+
+    builder.Services.AddSingleton<IEmailSender, GraphEmailSender>();
+    builder.Services.AddScoped<IOverstayAlertRepository, OverstayAlertRepository>();
+    builder.Services.AddScoped<IOverstayAlertService, OverstayAlertService>();
+
+    Console.WriteLine("✓ Alerte dépassement camion activée");
+}
+else
+{
+    Console.WriteLine("⚠ Alerte dépassement camion NON activée (OverstayAlert:Enabled=false ou AzureAdMail:ClientId manquant)");
+}
 
 var app = builder.Build();
 app.Run();
