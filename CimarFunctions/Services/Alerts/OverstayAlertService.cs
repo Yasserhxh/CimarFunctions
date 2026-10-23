@@ -3,7 +3,6 @@ using System.Text;
 using CimarFunctions.Models;
 using CimarFunctions.Services.Email;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace CimarFunctions.Services.Alerts;
 
@@ -17,42 +16,28 @@ public sealed class OverstayAlertService : IOverstayAlertService
 {
     private readonly IOverstayAlertRepository _repository;
     private readonly IEmailSender _email;
-    private readonly OverstayAlertOptions _opt;
     private readonly ILogger<OverstayAlertService> _logger;
 
     public OverstayAlertService(
         IOverstayAlertRepository repository,
         IEmailSender email,
-        IOptions<OverstayAlertOptions> opt,
         ILogger<OverstayAlertService> logger)
     {
         _repository = repository;
         _email = email;
-        _opt = opt.Value;
         _logger = logger;
     }
 
     public async Task RunScanAsync(CancellationToken cancellationToken = default)
     {
-        if (!_opt.Enabled)
-        {
-            _logger.LogInformation("OverstayAlert désactivé (OverstayAlert:Enabled = false).");
-            return;
-        }
-
-        var (to, cc) = OverstayAlertRules.SplitRecipients(_opt.Recipients);
-        if (string.IsNullOrEmpty(to))
-        {
-            _logger.LogWarning("Aucun destinataire configuré (OverstayAlert:Recipients) — scan ignoré.");
-            return;
-        }
+        var (to, cc) = OverstayAlertRules.SplitRecipients(OverstayAlertSettings.Recipients);
 
         // Maroc revenu définitivement à GMT le 20/09/2026 (décret 2.26.530) : heure Maroc = UTC.
         // Ne pas passer par TimeZoneInfo : les données de fuseau du serveur peuvent encore dire GMT+1,
         // alors que PabEntryAt est horodaté par Azure SQL (déjà en GMT).
         var nowLocal = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
 
-        var ignoreBefore = _opt.IgnoreEntriesBeforeLocal;
+        var ignoreBefore = OverstayAlertSettings.IgnoreEntriesBeforeLocal;
 
         const int threshold = OverstayAlertRules.AlertThresholdMinutes;
         var rows = await _repository.GetOverstayCandidatesAsync(nowLocal, threshold, ignoreBefore, cancellationToken);
@@ -72,7 +57,7 @@ public sealed class OverstayAlertService : IOverstayAlertService
             var subject = $"⚠ Camion en dépassement (> {threshold} min) — {r.Matricule ?? "?"} — {elapsed} min dans l'usine";
             var body = BuildHtmlBody(r, threshold, elapsed, nowLocal);
 
-            var ok = await _email.SendHtmlAsync(_opt.Sender, to, cc, subject, body, highPriority: true, cancellationToken);
+            var ok = await _email.SendHtmlAsync(OverstayAlertSettings.Sender, to, cc, subject, body, highPriority: true, cancellationToken);
             if (!ok)
                 _logger.LogWarning("Alerte {Threshold} min non délivrée pour la legend {LegendId} ({Matricule}).",
                     threshold, r.Id, r.Matricule);

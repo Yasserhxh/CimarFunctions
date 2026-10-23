@@ -45,15 +45,12 @@ builder.Services.AddHttpClient<IClientLivraisonApi, ClientLivraisonApi>(client =
 });
 
 // Alerte « camion en dépassement dans l'usine (entre 1ère et 2ème pesée) ».
-// Enregistrée seulement si AzureAdMail:ClientId est présent : sans creds, on ne
-// branche ni le client MSAL ni le worker (l'app démarre normalement, pas de crash).
-var overstayEnabled = builder.Configuration.GetValue("OverstayAlert:Enabled", true);
+// Paramètres codés en dur (OverstayAlertSettings / OverstayAlertRules) ; seuls les
+// identifiants AzureAdMail (secrets) viennent de la configuration. Sans AzureAdMail:ClientId,
+// on ne branche ni le client MSAL ni le worker (l'app démarre normalement, pas de crash).
 var mailClientId = builder.Configuration["AzureAdMail:ClientId"];
-if (overstayEnabled && !string.IsNullOrWhiteSpace(mailClientId))
+if (!string.IsNullOrWhiteSpace(mailClientId))
 {
-    builder.Services.Configure<OverstayAlertOptions>(
-        builder.Configuration.GetSection("OverstayAlert"));
-
     builder.Services.AddSingleton<IConfidentialClientApplication>(_ =>
         ConfidentialClientApplicationBuilder
             .Create(mailClientId)
@@ -69,7 +66,7 @@ if (overstayEnabled && !string.IsNullOrWhiteSpace(mailClientId))
 }
 else
 {
-    Console.WriteLine("⚠ Alerte dépassement camion NON activée (OverstayAlert:Enabled=false ou AzureAdMail:ClientId manquant)");
+    Console.WriteLine("⚠ Alerte dépassement camion NON activée (AzureAdMail:ClientId manquant)");
 }
 
 var app = builder.Build();
