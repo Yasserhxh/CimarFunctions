@@ -18,11 +18,10 @@ public sealed class OverstayAlertTimer
         _logger = logger;
     }
 
-    // Runs every 5 minutes. The CRON is the single source of truth for the scan cadence
-    // (OverstayAlert:PollIntervalMinutes is kept for config parity but does not drive it).
+    // Runs every 15 minutes (OverstayAlertRules.ScanSchedule), hardcoded on purpose.
     [Function(nameof(OverstayAlertTimer))]
     public async Task Run(
-        [TimerTrigger("0 */5 * * * *")] TimerInfo timer,
+        [TimerTrigger(OverstayAlertRules.ScanSchedule)] TimerInfo timer,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation(

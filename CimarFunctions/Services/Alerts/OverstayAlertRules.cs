@@ -9,32 +9,35 @@ namespace CimarFunctions.Services.Alerts;
 public static class OverstayAlertRules
 {
     /// <summary>
-    /// Paliers d'alerte (ex. 75 puis 90 min) à envoyer maintenant pour ce camion :
-    /// franchis (durée écoulée &gt; palier) mais pas encore notifiés. Vide si le camion
-    /// n'est pas entré (pas de 1ère pesée) ou déjà sorti (2ème pesée faite). Trié croissant.
-    /// Renvoyer plusieurs paliers d'un coup couvre le cas d'un worker resté indisponible.
+    /// Seuil unique d'alerte (demande client du 23/10/2026 : un seul e-mail par camion).
+    /// Codé en dur volontairement : non surchargeable par les app settings Azure.
     /// </summary>
-    public static IReadOnlyList<int> StagesToSend(
+    public const int AlertThresholdMinutes = 90;
+
+    /// <summary>CRON du TimerTrigger : un scan toutes les 15 minutes.</summary>
+    public const string ScanSchedule = "0 */15 * * * *";
+
+    /// <summary>
+    /// Vrai si le camion doit être alerté maintenant : entré (1ère pesée), pas encore sorti
+    /// (pas de 2ème pesée), au-delà du seuil et pas encore alerté. Le dépassement est
+    /// strict : à 90 min pile, pas encore d'alerte.
+    /// </summary>
+    public static bool IsAlertDue(
         DateTime? pabEntryAt,
         int? deuxiemePoid,
         DateTime nowLocal,
-        IEnumerable<int> thresholds,
-        ISet<int> alreadySent,
+        bool alreadyAlerted,
         DateTime? ignoreBefore = null)
     {
-        if (pabEntryAt is null || deuxiemePoid is not null)
-            return Array.Empty<int>();
+        if (alreadyAlerted || pabEntryAt is null || deuxiemePoid is not null)
+            return false;
 
         // Plancher anti-fantômes : les enregistrements entrés avant cette date (2e pesée
         // faite manuellement / hors système, legend jamais clôturée) ne sont jamais alertés.
         if (ignoreBefore is not null && pabEntryAt.Value < ignoreBefore.Value)
-            return Array.Empty<int>();
+            return false;
 
-        var elapsed = ElapsedMinutes(pabEntryAt.Value, nowLocal);
-        return thresholds
-            .Where(t => elapsed > t && !alreadySent.Contains(t))
-            .OrderBy(t => t)
-            .ToList();
+        return ElapsedMinutes(pabEntryAt.Value, nowLocal) > AlertThresholdMinutes;
     }
 
     /// <summary>Minutes écoulées depuis la 1ère pesée, arrondies à la minute.</summary>

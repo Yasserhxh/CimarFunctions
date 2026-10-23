@@ -10,44 +10,39 @@ public class OverstayAlertRulesTests
 {
     // Repère fixe en heure locale Maroc (PabEntryAt est stocké en heure Maroc par le kiosk).
     private static readonly DateTime Now = new(2026, 9, 23, 10, 0, 0);
-    private static readonly int[] Paliers = { 75, 90 };
 
-    private static ISet<int> Sent(params int[] t) => new HashSet<int>(t);
+    // Demande client (23/10/2026) : un seul e-mail par camion, au-delà de 90 min, scan toutes les 15 min.
+    [Fact]
+    public void Seuil_unique_code_en_dur_a_90_minutes()
+        => Assert.Equal(90, OverstayAlertRules.AlertThresholdMinutes);
 
     [Fact]
-    public void Pas_de_premiere_pesee_aucun_palier()
-        => Assert.Empty(OverstayAlertRules.StagesToSend(null, null, Now, Paliers, Sent()));
+    public void Scan_toutes_les_15_minutes()
+        => Assert.Equal("0 */15 * * * *", OverstayAlertRules.ScanSchedule);
 
     [Fact]
-    public void Deuxieme_pesee_faite_aucun_palier()
-        => Assert.Empty(OverstayAlertRules.StagesToSend(Now.AddMinutes(-120), 30000, Now, Paliers, Sent()));
+    public void Pas_de_premiere_pesee_pas_d_alerte()
+        => Assert.False(OverstayAlertRules.IsAlertDue(null, null, Now, alreadyAlerted: false));
 
     [Fact]
-    public void Sous_le_premier_seuil_aucun_palier()
-        => Assert.Empty(OverstayAlertRules.StagesToSend(Now.AddMinutes(-60), null, Now, Paliers, Sent()));
+    public void Deuxieme_pesee_faite_pas_d_alerte()
+        => Assert.False(OverstayAlertRules.IsAlertDue(Now.AddMinutes(-120), 30000, Now, alreadyAlerted: false));
+
+    [Fact]
+    public void A_80_minutes_plus_d_alerte_intermediaire()
+        => Assert.False(OverstayAlertRules.IsAlertDue(Now.AddMinutes(-80), null, Now, alreadyAlerted: false));
 
     [Fact]
     public void Au_seuil_exact_pas_encore_declenche()
-        => Assert.Empty(OverstayAlertRules.StagesToSend(Now.AddMinutes(-75), null, Now, Paliers, Sent()));
+        => Assert.False(OverstayAlertRules.IsAlertDue(Now.AddMinutes(-90), null, Now, alreadyAlerted: false));
 
     [Fact]
-    public void Au_dela_de_75_declenche_seulement_75()
-        => Assert.Equal(new[] { 75 },
-            OverstayAlertRules.StagesToSend(Now.AddMinutes(-80), null, Now, Paliers, Sent()).ToArray());
+    public void Au_dela_de_90_minutes_declenche()
+        => Assert.True(OverstayAlertRules.IsAlertDue(Now.AddMinutes(-91), null, Now, alreadyAlerted: false));
 
     [Fact]
-    public void Palier_75_deja_envoye_ne_renvoie_rien_avant_90()
-        => Assert.Empty(OverstayAlertRules.StagesToSend(Now.AddMinutes(-80), null, Now, Paliers, Sent(75)));
-
-    [Fact]
-    public void Au_dela_de_90_avec_75_deja_envoye_declenche_90()
-        => Assert.Equal(new[] { 90 },
-            OverstayAlertRules.StagesToSend(Now.AddMinutes(-95), null, Now, Paliers, Sent(75)).ToArray());
-
-    [Fact]
-    public void Worker_rate_les_deux_paliers_les_envoie_ensemble()
-        => Assert.Equal(new[] { 75, 90 },
-            OverstayAlertRules.StagesToSend(Now.AddMinutes(-95), null, Now, Paliers, Sent()).ToArray());
+    public void Deja_alerte_pas_de_second_email()
+        => Assert.False(OverstayAlertRules.IsAlertDue(Now.AddMinutes(-150), null, Now, alreadyAlerted: true));
 
     [Fact]
     public void ElapsedMinutes_arrondi_a_la_minute()
@@ -55,23 +50,18 @@ public class OverstayAlertRulesTests
 
     // Garde-fou « fantômes » : un camion entré avant le plancher (2e pesée manuelle / hors
     // système, enregistrement jamais clôturé) ne doit JAMAIS déclencher d'alerte, même très
-    // au-delà des paliers. Cas réel : legend 28202 entré le 02/10, alerte à 27438 min.
+    // au-delà du seuil. Cas réel : legend 28202 entré le 02/10, alerte à 27438 min.
     private static readonly DateTime Floor = new(2026, 9, 23, 0, 0, 0);
 
     [Fact]
-    public void Entre_avant_le_plancher_aucun_palier_meme_tres_en_retard()
-        => Assert.Empty(OverstayAlertRules.StagesToSend(
-            Floor.AddMinutes(-5000), null, Now, Paliers, Sent(), ignoreBefore: Floor));
+    public void Entre_avant_le_plancher_pas_d_alerte_meme_tres_en_retard()
+        => Assert.False(OverstayAlertRules.IsAlertDue(
+            Floor.AddMinutes(-5000), null, Now, alreadyAlerted: false, ignoreBefore: Floor));
 
     [Fact]
     public void Entre_apres_le_plancher_declenche_normalement()
-        => Assert.Equal(new[] { 75, 90 }, OverstayAlertRules.StagesToSend(
-            Now.AddMinutes(-95), null, Now, Paliers, Sent(), ignoreBefore: Floor).ToArray());
-
-    [Fact]
-    public void Sans_plancher_comportement_inchange()
-        => Assert.Equal(new[] { 75 }, OverstayAlertRules.StagesToSend(
-            Now.AddMinutes(-80), null, Now, Paliers, Sent(), ignoreBefore: null).ToArray());
+        => Assert.True(OverstayAlertRules.IsAlertDue(
+            Now.AddMinutes(-95), null, Now, alreadyAlerted: false, ignoreBefore: Floor));
 
     [Fact]
     public void SplitRecipients_premier_to_reste_cc_dedoublonne()

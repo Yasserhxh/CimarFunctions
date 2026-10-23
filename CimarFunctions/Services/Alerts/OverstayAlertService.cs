@@ -9,8 +9,9 @@ namespace CimarFunctions.Services.Alerts;
 
 /// <summary>
 /// Surveille les camions restés trop longtemps dans l'usine (de la 1ère pesée jusqu'à la
-/// 2ème pesée) et envoie une alerte e-mail (Azure AD / Graph) au-delà des paliers configurés.
-/// Une seule alerte par (camion, palier) via le journal Ecare_Overstay_Alert_Log.
+/// 2ème pesée) et envoie UN seul e-mail (Azure AD / Graph) au-delà de
+/// <see cref="OverstayAlertRules.AlertThresholdMinutes"/> minutes.
+/// Dédoublonnage par camion via le journal Ecare_Overstay_Alert_Log (palier 90).
 /// </summary>
 public sealed class OverstayAlertService : IOverstayAlertService
 {
@@ -46,15 +47,6 @@ public sealed class OverstayAlertService : IOverstayAlertService
             return;
         }
 
-        var thresholds = (_opt.Thresholds ?? new List<int>())
-            .Where(t => t > 0).Distinct().OrderBy(t => t).ToList();
-        if (thresholds.Count == 0)
-        {
-            _logger.LogWarning("Aucun palier configuré (OverstayAlert:Thresholds) — scan ignoré.");
-            return;
-        }
-        var minThreshold = thresholds[0];
-
         // Maroc revenu définitivement à GMT le 20/09/2026 (décret 2.26.530) : heure Maroc = UTC.
         // Ne pas passer par TimeZoneInfo : les données de fuseau du serveur peuvent encore dire GMT+1,
         // alors que PabEntryAt est horodaté par Azure SQL (déjà en GMT).
@@ -62,30 +54,28 @@ public sealed class OverstayAlertService : IOverstayAlertService
 
         var ignoreBefore = _opt.IgnoreEntriesBeforeLocal;
 
-        var rows = await _repository.GetOverstayCandidatesAsync(nowLocal, minThreshold, ignoreBefore, cancellationToken);
+        const int threshold = OverstayAlertRules.AlertThresholdMinutes;
+        var rows = await _repository.GetOverstayCandidatesAsync(nowLocal, threshold, ignoreBefore, cancellationToken);
         if (rows.Count == 0) return;
 
         foreach (var r in rows)
         {
-            var alreadySent = ParseStages(r.SentStagesCsv);
-            var due = OverstayAlertRules.StagesToSend(r.PabEntryAt, null, nowLocal, thresholds, alreadySent, ignoreBefore);
-            if (due.Count == 0) continue;
+            // Les anciennes alertes 75 min (avant le 23/10/2026) ne bloquent pas : seul le palier 90 compte.
+            var alreadyAlerted = ParseStages(r.SentStagesCsv).Contains(threshold);
+            if (!OverstayAlertRules.IsAlertDue(r.PabEntryAt, null, nowLocal, alreadyAlerted, ignoreBefore))
+                continue;
+
+            var claimed = await _repository.TryClaimStageAsync(r.Id, threshold, nowLocal, cancellationToken);
+            if (!claimed) continue; // déjà alerté par une exécution concurrente
 
             var elapsed = OverstayAlertRules.ElapsedMinutes(r.PabEntryAt, nowLocal);
+            var subject = $"⚠ Camion en dépassement (> {threshold} min) — {r.Matricule ?? "?"} — {elapsed} min dans l'usine";
+            var body = BuildHtmlBody(r, threshold, elapsed, nowLocal);
 
-            foreach (var stage in due)
-            {
-                var claimed = await _repository.TryClaimStageAsync(r.Id, stage, nowLocal, cancellationToken);
-                if (!claimed) continue; // palier déjà alerté ailleurs
-
-                var subject = $"⚠ Camion en dépassement (> {stage} min) — {r.Matricule ?? "?"} — {elapsed} min dans l'usine";
-                var body = BuildHtmlBody(r, stage, elapsed, nowLocal);
-
-                var ok = await _email.SendHtmlAsync(_opt.Sender, to, cc, subject, body, highPriority: true, cancellationToken);
-                if (!ok)
-                    _logger.LogWarning("Alerte {Stage} min non délivrée pour la legend {LegendId} ({Matricule}).",
-                        stage, r.Id, r.Matricule);
-            }
+            var ok = await _email.SendHtmlAsync(_opt.Sender, to, cc, subject, body, highPriority: true, cancellationToken);
+            if (!ok)
+                _logger.LogWarning("Alerte {Threshold} min non délivrée pour la legend {LegendId} ({Matricule}).",
+                    threshold, r.Id, r.Matricule);
         }
     }
 
