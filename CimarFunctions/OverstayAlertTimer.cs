@@ -18,7 +18,7 @@ public sealed class OverstayAlertTimer
         _logger = logger;
     }
 
-    // Runs every 15 minutes (OverstayAlertRules.ScanSchedule), hardcoded on purpose.
+    // Runs every minute (OverstayAlertRules.ScanSchedule), hardcoded on purpose.
     [Function(nameof(OverstayAlertTimer))]
     public async Task Run(
         [TimerTrigger(OverstayAlertRules.ScanSchedule)] TimerInfo timer,

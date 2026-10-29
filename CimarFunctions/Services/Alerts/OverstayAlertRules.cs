@@ -14,8 +14,8 @@ public static class OverstayAlertRules
     /// </summary>
     public const int AlertThresholdMinutes = 90;
 
-    /// <summary>CRON du TimerTrigger : un scan toutes les 15 minutes.</summary>
-    public const string ScanSchedule = "0 */15 * * * *";
+    /// <summary>CRON du TimerTrigger : un scan chaque minute (retard d'envoi max ~1 min après le seuil).</summary>
+    public const string ScanSchedule = "0 * * * * *";
 
     /// <summary>
     /// Vrai si le camion doit être alerté maintenant : entré (1ère pesée), pas encore sorti

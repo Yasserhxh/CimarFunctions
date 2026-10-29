@@ -11,14 +11,14 @@ public class OverstayAlertRulesTests
     // Repère fixe en heure locale Maroc (PabEntryAt est stocké en heure Maroc par le kiosk).
     private static readonly DateTime Now = new(2026, 9, 23, 10, 0, 0);
 
-    // Demande client (23/10/2026) : un seul e-mail par camion, au-delà de 90 min, scan toutes les 15 min.
+    // Demande client (23/10/2026) : un seul e-mail par camion, au-delà de 90 min. Scan chaque minute (29/10/2026) pour limiter le retard d'envoi à ~1 min.
     [Fact]
     public void Seuil_unique_code_en_dur_a_90_minutes()
         => Assert.Equal(90, OverstayAlertRules.AlertThresholdMinutes);
 
     [Fact]
-    public void Scan_toutes_les_15_minutes()
-        => Assert.Equal("0 */15 * * * *", OverstayAlertRules.ScanSchedule);
+    public void Scan_chaque_minute()
+        => Assert.Equal("0 * * * * *", OverstayAlertRules.ScanSchedule);
 
     [Fact]
     public void Pas_de_premiere_pesee_pas_d_alerte()
