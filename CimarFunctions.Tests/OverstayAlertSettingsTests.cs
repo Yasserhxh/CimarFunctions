@@ -13,16 +13,26 @@ public class OverstayAlertSettingsTests
         => Assert.Equal("cimar.noreplay@cimar.co.ma", OverstayAlertSettings.Sender);
 
     [Fact]
-    public void Destinataire_principal_en_TO_et_quatre_en_CC()
+    public void Deux_destinataires_en_TO_et_dix_en_CC()
     {
-        var (to, cc) = OverstayAlertRules.SplitRecipients(OverstayAlertSettings.Recipients);
+        var (to, cc) = OverstayAlertRules.BuildRecipients(
+            OverstayAlertSettings.ToRecipients, OverstayAlertSettings.CcRecipients);
 
-        Assert.Equal("abdelkarim.mezianemtalsi@heidelbergmaterials.com", to);
         Assert.Equal(
-            "abd-ettaouab.elhrarti@heidelbergmaterials.com," +
-            "abderrahman.louza@heidelbergmaterials.com," +
             "mohamed.elrhattaoui@heidelbergmaterials.com," +
             "ismail.chakra@heidelbergmaterials.com",
+            to);
+        Assert.Equal(
+            "abdelkarim.mezianemtalsi@heidelbergmaterials.com," +
+            "mohamedkhalil.kada@heidelbergmaterials.com," +
+            "abderrahman.louza@heidelbergmaterials.com," +
+            "abd-ettaouab.elhrarti@heidelbergmaterials.com," +
+            "m.oufkir@cimar.co.ma," +
+            "mohamed.aggoujil@heidelbergmaterials.com," +
+            "adnane.elbakhri@heidelbergmaterials.com," +
+            "safaa.elbouabidi.ext@cimar.co.ma," +
+            "oussama.elhilali.ext@cimar.co.ma," +
+            "souhail.elbasett@heidelbergmaterials.com",
             cc);
     }
 

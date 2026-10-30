@@ -64,25 +64,38 @@ public class OverstayAlertRulesTests
             Now.AddMinutes(-95), null, Now, alreadyAlerted: false, ignoreBefore: Floor));
 
     [Fact]
-    public void SplitRecipients_premier_to_reste_cc_dedoublonne()
+    public void BuildRecipients_joint_to_et_cc_dedoublonne()
     {
-        var (to, cc) = OverstayAlertRules.SplitRecipients(new[]
-        {
-            "abdelkarim.mezianemtalsi@heidelbergmaterials.com",
-            "abdelkarim.mezianemtalsi@heidelbergmaterials.com", // doublon exact
-            "ABD-ETTAOUAB.ELHRARTI@heidelbergmaterials.com",     // casse différente = même adresse
-            "abd-ettaouab.elhrarti@heidelbergmaterials.com",
-            "   ",                                                 // vide ignoré
-            "ismail.chakra@heidelbergmaterials.com",
-        });
-        Assert.Equal("abdelkarim.mezianemtalsi@heidelbergmaterials.com", to);
-        Assert.Equal("ABD-ETTAOUAB.ELHRARTI@heidelbergmaterials.com,ismail.chakra@heidelbergmaterials.com", cc);
+        var (to, cc) = OverstayAlertRules.BuildRecipients(
+            new[]
+            {
+                "mohamed.elrhattaoui@heidelbergmaterials.com",
+                "MOHAMED.ELRHATTAOUI@heidelbergmaterials.com", // casse différente = même adresse
+                "   ",                                           // vide ignoré
+                "ismail.chakra@heidelbergmaterials.com",
+            },
+            new[]
+            {
+                "abdelkarim.mezianemtalsi@heidelbergmaterials.com",
+                "ismail.chakra@heidelbergmaterials.com",         // déjà en TO : retiré du CC
+                "abdelkarim.mezianemtalsi@heidelbergmaterials.com",
+            });
+        Assert.Equal("mohamed.elrhattaoui@heidelbergmaterials.com,ismail.chakra@heidelbergmaterials.com", to);
+        Assert.Equal("abdelkarim.mezianemtalsi@heidelbergmaterials.com", cc);
     }
 
     [Fact]
-    public void SplitRecipients_liste_vide_to_vide_cc_null()
+    public void BuildRecipients_cc_vide_renvoie_null()
     {
-        var (to, cc) = OverstayAlertRules.SplitRecipients(Array.Empty<string>());
+        var (to, cc) = OverstayAlertRules.BuildRecipients(new[] { "a@x.com" }, Array.Empty<string>());
+        Assert.Equal("a@x.com", to);
+        Assert.Null(cc);
+    }
+
+    [Fact]
+    public void BuildRecipients_listes_vides_to_vide_cc_null()
+    {
+        var (to, cc) = OverstayAlertRules.BuildRecipients(Array.Empty<string>(), Array.Empty<string>());
         Assert.Equal(string.Empty, to);
         Assert.Null(cc);
     }

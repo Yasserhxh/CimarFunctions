@@ -30,7 +30,8 @@ public sealed class OverstayAlertService : IOverstayAlertService
 
     public async Task RunScanAsync(CancellationToken cancellationToken = default)
     {
-        var (to, cc) = OverstayAlertRules.SplitRecipients(OverstayAlertSettings.Recipients);
+        var (to, cc) = OverstayAlertRules.BuildRecipients(
+            OverstayAlertSettings.ToRecipients, OverstayAlertSettings.CcRecipients);
 
         // Maroc revenu définitivement à GMT le 20/09/2026 (décret 2.26.530) : heure Maroc = UTC.
         // Ne pas passer par TimeZoneInfo : les données de fuseau du serveur peuvent encore dire GMT+1,

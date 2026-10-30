@@ -11,14 +11,26 @@ public static class OverstayAlertSettings
     /// <summary>Boîte expéditrice (Azure AD / Graph).</summary>
     public const string Sender = "cimar.noreplay@cimar.co.ma";
 
-    /// <summary>Liste de diffusion : 1er = TO, les suivants = CC.</summary>
-    public static readonly IReadOnlyList<string> Recipients = Array.AsReadOnly(new[]
+    /// <summary>Destinataires principaux (TO).</summary>
+    public static readonly IReadOnlyList<string> ToRecipients = Array.AsReadOnly(new[]
     {
-        "abdelkarim.mezianemtalsi@heidelbergmaterials.com",
-        "abd-ettaouab.elhrarti@heidelbergmaterials.com",
-        "abderrahman.louza@heidelbergmaterials.com",
         "mohamed.elrhattaoui@heidelbergmaterials.com",
         "ismail.chakra@heidelbergmaterials.com",
+    });
+
+    /// <summary>Destinataires en copie (CC).</summary>
+    public static readonly IReadOnlyList<string> CcRecipients = Array.AsReadOnly(new[]
+    {
+        "abdelkarim.mezianemtalsi@heidelbergmaterials.com",
+        "mohamedkhalil.kada@heidelbergmaterials.com",
+        "abderrahman.louza@heidelbergmaterials.com",
+        "abd-ettaouab.elhrarti@heidelbergmaterials.com",
+        "m.oufkir@cimar.co.ma",
+        "mohamed.aggoujil@heidelbergmaterials.com",
+        "adnane.elbakhri@heidelbergmaterials.com",
+        "safaa.elbouabidi.ext@cimar.co.ma",
+        "oussama.elhilali.ext@cimar.co.ma",
+        "souhail.elbasett@heidelbergmaterials.com",
     });
 
     /// <summary>

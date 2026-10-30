@@ -45,13 +45,20 @@ public static class OverstayAlertRules
         => (int)Math.Round((nowLocal - pabEntryAt).TotalMinutes);
 
     /// <summary>
-    /// Dédoublonne (insensible à la casse, en préservant la 1ère occurrence),
-    /// ignore les entrées vides, puis renvoie le 1er destinataire en TO et les
-    /// suivants en CC (joints par des virgules, ou null si aucun).
+    /// Joint les destinataires TO et CC par des virgules après dédoublonnage
+    /// (insensible à la casse, 1ère occurrence conservée, entrées vides ignorées).
+    /// Une adresse déjà en TO est retirée du CC. CC = null s'il est vide.
     /// </summary>
-    public static (string To, string? Cc) SplitRecipients(IEnumerable<string> recipients)
+    public static (string To, string? Cc) BuildRecipients(IEnumerable<string> to, IEnumerable<string> cc)
     {
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var toList = Clean(to, seen);
+        var ccList = Clean(cc, seen);
+        return (string.Join(",", toList), ccList.Count > 0 ? string.Join(",", ccList) : null);
+    }
+
+    private static List<string> Clean(IEnumerable<string> recipients, ISet<string> seen)
+    {
         var clean = new List<string>();
         foreach (var raw in recipients ?? Enumerable.Empty<string>())
         {
@@ -59,10 +66,6 @@ public static class OverstayAlertRules
             if (string.IsNullOrEmpty(e)) continue;
             if (seen.Add(e)) clean.Add(e);
         }
-
-        if (clean.Count == 0) return (string.Empty, null);
-        var to = clean[0];
-        var cc = clean.Count > 1 ? string.Join(",", clean.Skip(1)) : null;
-        return (to, cc);
+        return clean;
     }
 }
